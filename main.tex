@@ -72,7 +72,7 @@ Dokument zawiera specyfikację wymagań funkcjonalnych oraz projekt architektury
 
 
 \subsection{Cel i ogólna koncepcja systemu}
-FlatShare adresuje typowy problem rynku najmu pokoi: duża liczba ogłoszeń, brak ustandaryzowanej informacji o preferencjach domowników oraz konieczność wielokrotnej, powtarzalnej komunikacji przed podjęciem decyzji o wynajmie. System ma zmniejszyć „tarcie” po obu stronach procesu:
+FlatShare odpowiada na typowy problem rynku najmu pokoi: duża liczba ogłoszeń, brak ustandaryzowanej informacji o preferencjach domowników oraz konieczność wielokrotnej, powtarzalnej komunikacji przed podjęciem decyzji o wynajmie. System ma zmniejszyć „tarcie” po obu stronach procesu:
 \begin{itemize}
     \item \textbf{Lokator} szybciej znajduje ogłoszenia pasujące do jego potrzeb (filtry + dopasowywanie) oraz ma bezpośredni kanał kontaktu z właścicielem.
     \item \textbf{Właściciel} publikuje ogłoszenia w spójnej formie, kontroluje dostępność i może akceptować rezerwacje lub włączyć tryb \textit{Instant Book}.
@@ -107,7 +107,6 @@ Poniżej przedstawiono wymagania biznesowe zagregowane według aktorów systemu.
 \begin{itemize}
     \item \textbf{US-L1:} Jako Lokator, chcę przeglądać i filtrować ogłoszenia (wg ceny, lokalizacji), aby szybko znaleźć pokój spełniający moje kryteria.
     \item \textbf{US-L2:} Jako Lokator, chcę zdefiniować swoje preferencje (np. zwierzęta, palenie), aby system mógł podpowiadać mi najlepiej dopasowane oferty.
-    \item \textbf{US-L3:} Jako Lokator, chcę wysłać wiadomość do właściciela, aby dopytać o szczegóły wynajmu.
     \item \textbf{US-L4:} Jako Lokator, chcę wysłać prośbę o rezerwację pokoju, aby sfinalizować proces wynajmu.
     \item \textbf{US-L5:} Jako Lokator, chcę opłacić rezerwację przez zewnętrzny system płatności, aby potwierdzić wynajem.
 \end{itemize}
@@ -145,7 +144,6 @@ z dalszym opisem modeli, stanów oraz komunikacji API.
 \begin{itemize}
     \item \textbf{AC1:} Właściciel z rolą \texttt{LANDLORD} może utworzyć ogłoszenie z wymaganymi danymi (tytuł, opis, cena, lokalizacja, dostępność), a system przypisuje je do jego konta.
     \item \textbf{AC2:} System odrzuca niepoprawne dane (np. cena $\leq 0$) odpowiedzią \texttt{400 Bad Request} oraz zwraca listę błędów pól.
-    \item \textbf{AC3:} Ponowienie tego samego żądania z identycznym \texttt{Idempotency-Key} nie powoduje utworzenia duplikatu ogłoszenia.
 \end{itemize}
 
 \subsubsection{US-L2: Zdefiniowanie preferencji i dopasowywanie}
@@ -153,13 +151,6 @@ z dalszym opisem modeli, stanów oraz komunikacji API.
     \item \textbf{AC1:} Lokator może zapisać zestaw preferencji (np. palenie, zwierzęta, budżet), a system przechowuje je w kontekście roli \texttt{TenantRole}.
     \item \textbf{AC2:} Endpoint dopasowań zwraca ogłoszenia posortowane malejąco po \textit{match score}.
     \item \textbf{AC3:} Jeśli preferencje nie są ustawione, system zwraca pustą listę (lub zgodnie z polityką --- \texttt{404 Not Found}).
-\end{itemize}
-
-\subsubsection{US-L3: Wysłanie wiadomości do właściciela}
-\begin{itemize}
-    \item \textbf{AC1:} Wiadomość jest zawsze zapisywana w kontekście \texttt{MessageThread} powiązanego z \texttt{Listing}.
-    \item \textbf{AC2:} System nie pozwala na kontakt, gdy ogłoszenie nie jest aktywne albo adresat ma status konta \texttt{BLOCKED}.
-    \item \textbf{AC3:} Adresat otrzymuje powiadomienie o nowej wiadomości (kanał zależny od implementacji, np. email/push).
 \end{itemize}
 
 \subsubsection{US-L4/US-W4: Rezerwacja i akceptacja/odrzucenie}
@@ -219,7 +210,7 @@ widok rekomendacji (\textit{matching}), który wykorzystuje preferencje Lokatora
 
 
 
-\subsection{Moduł Użytkownika i Komunikacji}
+\subsection{Moduł Użytkownika}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.65\linewidth]{diagram_accounts_messaging.png}
@@ -227,7 +218,7 @@ widok rekomendacji (\textit{matching}), który wykorzystuje preferencje Lokatora
 \end{figure}
 
 
-\noindent\textbf{Opis modułu.} Moduł Użytkownika i Komunikacji łączy funkcje związane z kontem (\texttt{User}),
+\noindent\textbf{Opis modułu.} Moduł Użytkownika łączy funkcje związane z kontem (\texttt{User}),
 rolami oraz wymianą wiadomości pomiędzy Lokatorem i Właścicielem. Z perspektywy bezpieczeństwa
 to właśnie w tym obszarze powstaje token JWT wykorzystywany później przez pozostałe moduły.
 
@@ -239,8 +230,8 @@ czy użytkownik może korzystać z systemu (np. \texttt{BLOCKED} po moderacji).
 do wyliczenia rekomendacji. Ważne jest rozdzielenie danych „kontowych” od danych roli --- preferencje są przechowywane
 w \texttt{TenantRole}, co jest spójne z modelem domenowym.
 
-\noindent\textbf{Komunikacja i zgłoszenia:} wysyłanie wiadomości jest realizowane w kontekście ogłoszenia (wątek \texttt{MessageThread}
-powiązany z \texttt{Listing}). Dodatkowo zarówno Lokator, jak i Właściciel mogą zgłosić użytkownika lub ogłoszenie, co inicjuje
+\noindent\textbf{Zgłoszenia:} 
+Zarówno Lokator, jak i Właściciel mogą zgłosić użytkownika lub ogłoszenie, co inicjuje
 proces moderacyjny obsługiwany przez Administratora.
 
 
@@ -360,7 +351,7 @@ Projekt rozdziela modele danych (encje domenowe) od logiki (serwisy), zgodnie z 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\linewidth]{class_domain_core.png}
-    \caption{Diagram klas - model domenowy (User + Role, Listing, Apartment/Room, Booking, Payment, Messaging)}
+    \caption{Diagram klas - model domenowy (User + Role, Listing, Apartment/Room, Booking, Payment)}
 \end{figure}
 \paragraph{Uwaga projektowa (spójność domeny).}
 Rezerwacja (\texttt{Booking}) jest zawsze tworzona przez Lokatora (rola \texttt{TenantRole})
@@ -388,7 +379,7 @@ realizowana jest przez jawne interfejsy serwisów i porty integracyjne, co ogran
 
 \noindent\textbf{Kanały komunikacji:}
 \begin{itemize}
-    \item \textbf{Wywołania synchroniczne (in-process)} pomiędzy modułami, np. \texttt{MessagingService} pobiera właściciela ogłoszenia przez \texttt{ListingService}.
+    \item \textbf{Wywołania synchroniczne (in-process)} pomiędzy modułami, np.
     \item \textbf{Integracje zewnętrzne} poprzez porty, np. \texttt{IPaymentGateway} (płatności) oraz \texttt{INotificationPort} (powiadomienia).
 \end{itemize}
 
@@ -424,22 +415,11 @@ Zgodnie z wymaganiami projektowymi, system opiera się na obiektach domenowych o
         \item \texttt{Booking} reprezentuje proces rezerwacji i przechowuje status (np. \textit{PENDING\_APPROVAL, PENDING\_PAYMENT, CONFIRMED}).
         \item \texttt{Payment} przechowuje wynik integracji z bramką płatności (referencja dostawcy, status).
     \end{itemize}
-
-    \item \textbf{Komunikacja:}
-    \begin{itemize}
-        \item Zamiast pojedynczych wiadomości bez kontekstu, zastosowano \texttt{MessageThread} (wątek) oraz \texttt{Message} (wiadomość), co upraszcza utrzymanie historii rozmów i powiązanie z ogłoszeniem.
-    \end{itemize}
 \end{enumerate}
 \subsection{Wymiana informacji między modułami (Inter-module communication)}
 System realizuje komunikację między niezależnymi modułami poprzez warstwę serwisową i porty integracyjne (interfejsy), aby moduły nie były bezpośrednio ze sobą sprzężone.
 
 \begin{itemize}
-    \item \textbf{Moduł Komunikacji $\leftarrow$ Moduł Ogłoszeń}
-    \newline
-    Aby zrealizować przypadek użycia \textit{``Wysyłanie wiadomości''} w kontekście konkretnego ogłoszenia, moduł komunikacji musi ustalić adresata.
-    \newline
-    \textit{Wymagana interakcja:} \texttt{MessagingService} wywołuje \texttt{ListingService.getOwnerId(listingId)} aby pobrać identyfikator właściciela.
-
     \item \textbf{Moduł Dopasowań $\leftarrow$ Moduł Użytkownika (Preferencje)}
     \newline
     Aby dopasować ogłoszenia do Lokatora, \texttt{MatchingService} potrzebuje preferencji Lokatora.
@@ -599,23 +579,6 @@ W systemie FlatShare kluczowe procesy dotyczą: publikacji ogłoszeń, rezerwacj
 
 \FloatBarrier
 
-\subsubsection{Funkcjonalność: Wysyłanie wiadomości w kontekście ogłoszenia}
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\linewidth]{act_send_message.png}
-  \caption{Diagram aktywności: Wysyłanie wiadomości w kontekście ogłoszenia.}
-  \label{fig:act-send-message}
-\end{figure}
-
-\textbf{Opis:} Wysyłanie wiadomości jest kluczową funkcją wspierającą decyzję o wynajmie. Diagram pokazuje powiązanie komunikacji z \texttt{Listing} (adresat ustalany na podstawie właściciela ogłoszenia) oraz warunki brzegowe typu brak możliwości kontaktu.
-\begin{itemize}
-  \item \textbf{Główna ścieżka:} użytkownik tworzy treść $\rightarrow$ system pobiera właściciela ogłoszenia $\rightarrow$ zapisuje wiadomość w wątku $\rightarrow$ wysyła powiadomienie do adresata.
-  \item \textbf{Alternatywy:} brak adresata / konto zablokowane / ogłoszenie niedostępne (system przerywa i pokazuje komunikat).
-  \item \textbf{Efekt biznesowy:} utrzymanie historii rozmowy i kontekstu (wątek powiązany z \texttt{Listing}).
-\end{itemize}
-
-\FloatBarrier
-
 \subsubsection{Funkcjonalność: Blokada użytkownika (\texttt{Ban User})}
 \begin{figure}[H]
   \centering
@@ -667,15 +630,14 @@ aby uniknąć powielania tej logiki w dalszych scenariuszach biznesowych.
 \subsection{Konwencje zasobów REST i wersjonowanie}
 API projektowane jest zgodnie z podejściem \textit{resource-oriented}:
 \begin{itemize}
-    \item \textbf{Rzeczowniki w ścieżkach} (np. \texttt{/listings}, \texttt{/rentals}, \texttt{/messages}) reprezentują zasoby,
+    \item \textbf{Rzeczowniki w ścieżkach} (np. \texttt{/listings}, \texttt{/rentals}) reprezentują zasoby,
     \item \textbf{Czasowniki w metodach HTTP} (GET/POST/PATCH/DELETE) reprezentują operacje na zasobach,
     \item \textbf{Wersjonowanie w ścieżce} (\texttt{/api/v1}) umożliwia ewolucję interfejsu przy zachowaniu kompatybilności.
 \end{itemize}
 Dla list endpointów stosowana jest paginacja (\texttt{page}, \texttt{size}) oraz możliwość filtrowania parametrami zapytania.
 
-\subsection{Idempotencja i sytuacje wyścigu}
-Wybrane operacje tworzące (np. utworzenie ogłoszenia) wykorzystują nagłówek \texttt{Idempotency-Key}, co pozwala klientowi bezpiecznie
-ponawiać żądania w razie problemów sieciowych. Dodatkowo, w procesach zależnych od dostępności zasobu (np. rezerwacja terminu)
+\subsection{Sytuacje wyścigu}
+Dodatkowo, w procesach zależnych od dostępności zasobu (np. rezerwacja terminu)
 system musi obsłużyć sytuacje wyścigu (\texttt{409 Conflict}) --- przykładowo, gdy dwie osoby próbują zarezerwować ten sam pokój w tym samym okresie.
 
 \subsection{Wspólny format odpowiedzi błędów}
@@ -685,10 +647,12 @@ Odpowiedzi błędów są ustandaryzowane, aby klient mógł automatycznie interp
 
 \subsection{Słownik typów danych wykorzystywanych w komunikatach}
 W tabeli poniżej zestawiono podstawowe typy danych wykorzystywane w komunikacji pomiędzy klientem a serwerem.
-\begin{longtable}{|p{4cm}|p{4cm}|p{7cm}|}
+
+\begin{longtable}{|p{3cm}|p{5cm}|p{7cm}|}
 \hline
 \textbf{Typ} & \textbf{Reprezentacja} & \textbf{Uwagi} \\ \hline
-UUID & \texttt{"550e8400-e29b-41d4-a716-446655440000"} & Identyfikatory zasobów (RFC~4122). \\ \hline
+UUID & \texttt{"550e8400-e29b-41d4
+-a716-446655440000"} & Identyfikatory zasobów (RFC~4122). \\ \hline
 Date & \texttt{"2024-11-01"} & Data w ISO~8601 (\texttt{YYYY-MM-DD}). \\ \hline
 DateTime (UTC) & \texttt{"2024-10-15T14:00:00Z"} & Znacznik czasu w ISO~8601 w UTC. \\ \hline
 Money & \texttt{amount + currency} & Kwota dziesiętna + kod waluty ISO~4217 (np. PLN). \\ \hline
@@ -786,13 +750,79 @@ chronionych.
 \label{fig:jwt}
 \end{figure}
 
+\FloatBarrier
+
+
+%============================================%
+\section{Rejestracja}
+
+Rejestracja jest podstawową funkcjonalnością, bez której użytkownik nie może wejść w dalszą interakcję z systemem. Jest potrzebna zarówno lokatorom, jak i właścicielom pokoi.
+
+\subsection{Opis endpointu}
+
+Rejestracja realizowana jest za pomocą restful endpointu powiązanego z użytkownikami.
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{POST}
+    \item Adres URL: \texttt{/api/v1/users}
+    \item Typ treści: \texttt{application/json}
+\end{itemize}
+
+\subsection{Przykładowe żądanie}
+
+Poniżej przedstawiono przykładowe żądanie HTTP służące do utworzenia nowego użytkownika
+
+\begin{lstlisting}[style=http,caption={Przykładowe żądanie rejestracji}]
+POST /api/v1/users
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania rejestracji}]
+{
+  "firstName": "Jan",
+  "lastName": "Kowalski",
+  "email": "jan.kowalski@example.com",
+  "password": "jestemSobieWesołyJanek"
+}
+\end{lstlisting}
+
+\subsection{Przykładowa odpowiedź — sukces}
+
+W przypadku poprawnego zarejestrowania użytkownika system zwraca informację o sukcesie. 
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+201 Created
+Content-Type: application/json
+Location: http://flatshareapp.example.com/users/123
+
+{
+  "message": "New user created",
+  "user": {
+    "id": 123,
+    "firstName": "Jan",
+    "lastName": "Kowalski",
+    "email": "jan.kowalski@example.com"
+  }
+}
+\end{lstlisting}
+
+\subsection{Obsługa błędów}
+
+W przypadku nieudanej rejestracji żądanie zostaje odrzucone, a system zwraca odpowiedź:
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — nieudana rejestracja}]
+400 Bad Request
+\end{lstlisting}
+
+%============================================%
 
 
 \section{Logowanie}
 
 Proces logowania umożliwia uwierzytelnienie użytkownika w systemie oraz uzyskanie
 tokenu JWT (\textit{access token}), który jest następnie wykorzystywany do
-autoryzacji żądań kierowanych do endpointów chronionych interfejsu API.
+autoryzacji żądań kierowanych do endpointów chronionych interfejsu API. Aby logowanie było restful i polegało wyłącznie na tworzeniu/dostępie do zasobów, reprezentujemy logowanie jako endpoint tworzący nową sesję. 
 
 \subsection{Opis endpointu}
 
@@ -800,41 +830,43 @@ Logowanie realizowane jest za pomocą dedykowanego endpointu autoryzacyjnego:
 
 \begin{itemize}
     \item Metoda HTTP: \texttt{POST}
-    \item Adres URL: \texttt{/api/v1/auth/login}
+    \item Adres URL: \texttt{/api/v1/sessions}
     \item Typ treści: \texttt{application/json}
 \end{itemize}
 
 \subsection{Przykładowe żądanie}
 
 Poniżej przedstawiono przykładowe żądanie HTTP służące do uwierzytelnienia
-użytkownika w systemie.
+użytkownika w systemie (utworzenia sesji)
 
 \begin{lstlisting}[style=http,caption={Przykładowe żądanie logowania}]
-POST /api/v1/auth/login
+POST /api/v1/sessions
 Content-Type: application/json
 Accept: application/json
 \end{lstlisting}
 
 \begin{lstlisting}[style=json,caption={Ciało żądania logowania}]
 {
-  "login": "jan.kowalski@example.com",
+  "email": "jan.kowalski@example.com",
   "password": "P@ssw0rd!"
 }
 \end{lstlisting}
 
 \subsection{Przykładowa odpowiedź — sukces}
 
-W przypadku poprawnego uwierzytelnienia użytkownika system zwraca token JWT,
+W przypadku poprawnego uwierzytelnienia użytkownika system zwraca informację o utworzeniu sesji reprezentowanej przez token JWT,
 który powinien zostać zapisany po stronie klienta i dołączany do kolejnych żądań.
 
 \begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
-200 OK
+201 Created
 Content-Type: application/json
+Location: http://flatshareapp.example.com/sessions/0e1ebd25-19bd-40b6-8a9b-c5831f3e0b5d
 \end{lstlisting}
 
 \begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "sessionId": 0e1ebd25-19bd-40b6-8a9b-c5831f3e0b5d
   "type": "Bearer",
   "expiresIn": 3600,
   "roles": ["LANDLORD"]
@@ -869,9 +901,59 @@ Mechanizm logowania został zaprojektowany w sposób umożliwiający jednoznaczn
 oddzielenie procesu uwierzytelnienia od logiki biznesowej systemu. Token JWT
 zwracany w odpowiedzi zawiera informacje niezbędne do identyfikacji użytkownika
 oraz jego ról, co pozwala na efektywne zarządzanie dostępem do zasobów systemu.
+Jednakże, w praktyce potrzebny jest jeszcze sposób na odświeżenie sesji (tokenu) użytkownika, dlatego prezentujemy następujący endpoint:
 
+%=============================================%
 
+%============================================%
+\section{Odświeżanie sesji}
 
+\subsection{Opis endpointu}
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{}
+    \item Adres URL: \texttt{/api/v1/sessions}
+    \item Typ treści: \texttt{application/json}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+\subsection{Przykładowe żądanie}
+
+Poniżej przedstawiono przykładowe żądanie HTTP służące do uwierzytelnienia
+użytkownika w systemie (utworzenia sesji)
+
+\begin{lstlisting}[style=http,caption={Przykładowe żądanie logowania}]
+PATCH /api/v1/sessions/4bdb3f80-9ea8-49bb-91d5-591fff9e8815
+\end{lstlisting}
+
+\subsection{Przykładowa odpowiedź — sukces}
+
+W przypadku poprawnego uwierzytelnienia użytkownika system zwraca informację o odświeżeniu sesji reprezentowanej przez token JWT,
+który powinien zostać zapisany po stronie klienta i dołączany do kolejnych żądań.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+201 Created
+Content-Type: application/json
+
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "sessionId": 4bdb3f80-9ea8-49bb-91d5-591fff9e8815
+  "type": "Bearer",
+  "expiresIn": 3600,
+  "roles": ["LANDLORD"]
+}
+\end{lstlisting}
+
+\subsection{Obsługa błędów}
+
+W przypadku podania nieprawidłowych danych uwierzytelniających (błędny token) żądanie zostaje odrzucone, a system zwraca odpowiedź:
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — błędna autoryzacja}]
+401 Unauthorized
+\end{lstlisting}
 
 \subsection{Reset hasła}
 Reset hasła realizowany jest jako proces dwuetapowy, aby uniknąć ujawniania informacji o istnieniu konta oraz zapewnić kontrolę nad operacją zmiany hasła.
@@ -912,120 +994,10 @@ Odpowiedź w tym etapie ma charakter „neutralny” (np. \texttt{202 Accepted})
     \item po skutecznej zmianie hasła wszystkie aktywne sesje/tokenu (poza bieżącą) mogą zostać unieważnione zgodnie z polityką bezpieczeństwa,
     \item system stosuje politykę złożoności hasła i nie przechowuje haseł w postaci jawnej (hash + sól).
 \end{itemize}
+%============================================%
 
-
-\section{Wystawienie ogłoszenia}
-
-Niniejszy rozdział opisuje proces wystawienia ogłoszenia przez użytkownika
-pełniącego rolę wynajmującego. Opis dotyczy wyłącznie logiki biznesowej
-realizowanej po stronie systemu. Mechanizm technicznej autoryzacji JWT został
-opisany w osobnym rozdziale i nie jest tutaj powielany.
-
-Zakłada się, że żądanie dotarło do warstwy kontrolera z poprawnie ustawionym
-kontekstem użytkownika (identyfikator użytkownika oraz role).
-
-\subsection{Opis endpointu}
-
-\begin{itemize}
-    \item Metoda HTTP: \texttt{POST}
-    \item Adres URL: \texttt{/api/v1/listings}
-    \item Endpoint chroniony: tak (JWT)
-\end{itemize}
-
-\noindent\textbf{Pozostałe operacje na zasobie \texttt{Listing}.} W praktycznym użyciu systemu niezbędne są również endpointy do pobierania i zarządzania widocznością ogłoszeń (US-L1, US-W3). Poniżej zebrano kluczowe ścieżki (bez rozwijania diagramów sekwencji):
-\begin{itemize}
-    \item \texttt{GET /api/v1/listings/\{listingId\}} -- szczegóły ogłoszenia.
-    \item \texttt{PATCH /api/v1/listings/\{listingId\}} -- edycja pól ogłoszenia (tylko właściciel zasobu).
-    \item \texttt{POST /api/v1/listings/\{listingId\}/hide} -- ukrycie ogłoszenia (przejście do \texttt{HIDDEN}).
-    \item \texttt{POST /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia (przejście do \texttt{ARCHIVED}).
-    \item \textcolor{red}{\texttt{POST /api/v1/listings/\{listingId\}/unavailability} -- dodanie okresu niedostępności (np. remont), co blokuje możliwość rezerwacji w podanym terminie.}
-\end{itemize}
-Dzięki temu cykl życia ogłoszenia opisany na diagramie stanów (\texttt{Draft/UnderReview/Active/Hidden/Archived}) ma bezpośrednie odzwierciedlenie w API.
-
-
-\subsection{Przykładowe żądanie}
-
-\begin{lstlisting}[style=http,caption={Żądanie HTTP — wystawienie ogłoszenia}]
-POST /api/v1/listings
-Authorization: Bearer <JWT>
-Content-Type: application/json
-Accept: application/json
-Idempotency-Key: 8f6c4a61-4dd8-4c9a-9a9c-2d7f3a5e2b1c
-\end{lstlisting}
-
-\begin{lstlisting}[style=json,caption={Ciało żądania — wystawienie ogłoszenia}]
-{
-  "apartmentId": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "Pokój przy metrze",
-  "description": "Opis ogłoszenia...",
-  "price": 1200.00,
-  "currency": "PLN",
-  "availableFrom": "2024-10-01"
-}
-\end{lstlisting}
-
-\subsection{Przykładowa odpowiedź — sukces}
-
-W przypadku poprawnej walidacji danych oraz spełnienia warunków biznesowych
-ogłoszenie zostaje zapisane w systemie.
-
-\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
-201 Created
-Location: /api/v1/listings/c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a
-Content-Type: application/json
-\end{lstlisting}
-
-\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
-{
-  "listingId": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a",
-  "status": "ACTIVE",
-  "createdAt": "2024-09-15T10:30:00Z"
-}
-\end{lstlisting}
-
-\subsection{Obsługa błędów}
-
-W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
-
-\begin{itemize}
-    \item \texttt{400 Bad Request} – niepoprawne dane wejściowe (błędy walidacji),
-    \item \texttt{403 Forbidden} – brak uprawnień do wskazanego zasobu,
-    \item \texttt{404 Not Found} – wskazane mieszkanie nie istnieje.
-\end{itemize}
-
-\begin{lstlisting}[style=json,caption={Przykładowa odpowiedź — błąd walidacji}]
-{
-  "timestamp": "2024-09-15T10:30:00Z",
-  "status": 400,
-  "error": "ValidationError",
-  "fieldErrors": [
-    { "field": "price", "message": "Cena musi być większa od 0" },
-    { "field": "title", "message": "Tytuł jest wymagany" }
-  ]
-}
-\end{lstlisting}
-
-\subsection{Diagram sekwencji wystawienia ogłoszenia}
-
-Na rysunku \ref{fig:listing-sequence} przedstawiono diagram sekwencji
-ilustrujący przebieg procesu wystawienia ogłoszenia po stronie systemu.
-
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\textwidth]{wystawienie_ogloszenia_diagram.png}
-\caption{Diagram sekwencji procesu wystawienia ogłoszenia}
-\label{fig:listing-sequence}
-\end{figure}
-
-\subsection{Uwagi projektowe}
-
-Zastosowanie klucza idempotencji umożliwia bezpieczne ponowienie żądania bez
-ryzyka utworzenia duplikatów ogłoszeń. Walidacja danych wejściowych realizowana
-jest przed wykonaniem logiki biznesowej, co pozwala na szybkie odrzucenie
-niepoprawnych żądań.
-
-
-\section{Zarządzanie preferencjami i dopasowywanie}
+%===========================================================%
+\section{Zarządzanie preferencjami}
 
 Niniejszy rozdział opisuje proces dopasowywania ofert do preferencji użytkownika
 pełniącego rolę lokatora. Opis dotyczy logiki biznesowej realizowanej po stronie
@@ -1036,7 +1008,7 @@ Zakłada się, że żądanie zostało przetworzone przez warstwę autoryzacji, a
 kontekst użytkownika (identyfikator użytkownika) jest dostępny w warstwie
 kontrolera.
 
-\subsection{Zapis i aktualizacja preferencji Lokatora}
+\subsection{Opis endpointu - ustawianie preferencji}
 Aby dopasowywanie było deterministyczne i możliwe do odtworzenia, preferencje są utrzymywane po stronie serwera.
 Preferencje są danymi powiązanymi z rolą \texttt{TenantRole} (a nie „globalnym” profilem konta), co pozwala na rozszerzanie modelu
 bez wpływu na pozostałe role.
@@ -1057,8 +1029,30 @@ bez wpływu na pozostałe role.
 }
 \end{lstlisting}
 
+\subsection{Opis endpointu - pobieranie preferencji}
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{GET}
+    \item Adres URL: \texttt{/api/v1/users/me/preferences}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
+{
+  "maxPrice": 1500.00,
+  "currency": "PLN",
+  "smokingAllowed": false,
+  "petsAllowed": true,
+  "preferredDistricts": ["Mokotów", "Ochota"]
+}
+\end{lstlisting}
+
+\subsection{Uwagi projektowe}
+
 \noindent\textbf{Uwagi:} preferencje mogą być niekompletne (np. brak listy dzielnic), a w takim przypadku algorytm dopasowań traktuje brakujące pola jako neutralne.
 Dla zapewnienia spójności, po aktualizacji preferencji kolejne wywołanie endpointu dopasowań powinno uwzględniać nowy zestaw danych.
+
+\section{Wyszukiwanie pasujących mieszkań}
 
 \subsection{Opis endpointu}
 
@@ -1073,12 +1067,23 @@ Dla zapewnienia spójności, po aktualizacji preferencji kolejne wywołanie endp
 \begin{itemize}
     \item \texttt{page} – numer strony wyników (numerowanie od 0),
     \item \texttt{size} – liczba elementów na stronie.
+    \item \texttt{city} – miasto.
+    \item \texttt{district} – dzielnica miasta.
+    \item \texttt{minPrice} – minimalna cena.
+    \item \texttt{maxPrice} – maksymalna cena.
+    \item \texttt{petsAllowed} – zezwolenie na mieszkanie ze zwierzętami.
+    \item \texttt{nonSmokingOnly} – wymaganie aby wszyscy lokatorzy byli niepalący.
+    \item \texttt{closeToShops} – liczba elementów na stronie.
+    \item \texttt{profile} – jedna z wartości: "student", ... (otwarte na rozszerzenie)
+    \item \texttt{minArea} – minimalna powierzchnia pokoju [$m^2$].
+    \item \texttt{maxArea} – maksymalna powierzchnia pokoju [$m^2$].
+    \item \texttt{startDate} - początek okresu wynajmu
 \end{itemize}
 
 \subsection{Przykładowe żądanie}
 
 \begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie dopasowań}]
-GET /api/v1/matches?page=0&size=10
+GET /api/v1/matches?page=0&size=10?city=Warsaw&district=Mokotow&minPrice=1000&maxPrice=2500&petsAllowed=true&nonSmokingOnly=true&closeToShops=true&profile=student&minArea=10&maxArea=25&startDate=2024-11-01
 Authorization: Bearer <JWT>
 Accept: application/json
 \end{lstlisting}
@@ -1099,13 +1104,22 @@ Content-Type: application/json
     {
       "listingId": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a",
       "title": "Cichy pokój",
-      "price": 1400.00,
+      "price": 420.00,
       "currency": "PLN",
+      "area": 12.36,
+      "availableSince": "2057-12-28",
       "matchScore": 0.95,
       "location": {
         "city": "Warszawa",
         "district": "Mokotów",
-        "street": "Puławska"
+        "street": "Puławska 21"
+        "aptNumber": "37"
+      },
+      attributes: {
+          "petsAllowed": true,
+          "nonSmokingOnly": true,
+          "closeToShops": false,
+          "profile": "student",
       }
     }
   ],
@@ -1147,8 +1161,170 @@ Proces dopasowywania opiera się na analizie preferencji użytkownika oraz
 ocenie stopnia zgodności ofert z wykorzystaniem algorytmu punktowego
 (\textit{match score}). Wyniki są sortowane malejąco według stopnia dopasowania
 i zwracane w postaci stronicowanej.
+%===========================================================%
 
+\section{Wystawienie ogłoszenia}
 
+Niniejszy rozdział opisuje proces wystawienia ogłoszenia przez użytkownika
+pełniącego rolę wynajmującego. Opis dotyczy wyłącznie logiki biznesowej
+realizowanej po stronie systemu. Mechanizm technicznej autoryzacji JWT został
+opisany w osobnym rozdziale i nie jest tutaj powielany.
+
+Zakłada się, że żądanie dotarło do warstwy kontrolera z poprawnie ustawionym
+kontekstem użytkownika (identyfikator użytkownika oraz role).
+
+\subsection{Opis endpointu}
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{POST}
+    \item Adres URL: \texttt{/api/v1/listings}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+\noindent\textbf{Pozostałe operacje na zasobie \texttt{Listing}.} W praktycznym użyciu systemu niezbędne są również endpointy do pobierania i zarządzania widocznością ogłoszeń (US-L1, US-W3). Poniżej zebrano kluczowe ścieżki (bez rozwijania diagramów sekwencji):
+\begin{itemize}
+    \item \texttt{GET /api/v1/listings/\{listingId\}} -- szczegóły ogłoszenia.
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}} -- edycja pól ogłoszenia (tylko właściciel zasobu).
+    \item \texttt{POST /api/v1/listings/\{listingId\}/hide} -- ukrycie ogłoszenia (przejście do \texttt{HIDDEN}).
+    \item \texttt{POST /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia (przejście do \texttt{ARCHIVED}).
+    \item \textcolor{red}{\texttt{POST /api/v1/listings/\{listingId\}/unavailability} -- dodanie okresu niedostępności (np. remont), co blokuje możliwość rezerwacji w podanym terminie.}
+\end{itemize}
+Dzięki temu cykl życia ogłoszenia opisany na diagramie stanów \\
+(\texttt{Draft/UnderReview/Active/Hidden/Archived}) ma bezpośrednie odzwierciedlenie w API.
+
+\subsection{Przykładowe żąd anie}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — wystawienie szczegółów ogłoszenia}]
+POST /api/v1/listings
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania — wystawienie ogłoszenia}]
+{
+  "title": "Pokój przy metrze",
+  "description": "Najlepszy pokój, nawet karaluchów nie ma",
+  "price": 1200.00,
+  "currency": "PLN",
+  "availableFrom": "2024-10-01"
+  "ownerContact": "numer telefonu: 424 242 424",
+  "area": 12.36,
+  "availableSince": "2057-12-28",
+  "matchScore": 0.95,
+  "location": {
+    "city": "Warszawa",
+    "district": "Mokotów",
+    "street": "Puławska 21"
+    "aptNumber": "37"
+  },
+  attributes: {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+  }
+}
+\end{lstlisting}
+
+\subsection{Przykładowa odpowiedź — sukces}
+
+W przypadku poprawnej walidacji danych oraz spełnienia warunków biznesowych
+ogłoszenie zostaje zapisane w systemie.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+201 Created
+Location: /api/v1/listings/c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
+{
+  "listingId": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a",
+  "status": "ACTIVE",
+  "createdAt": "2024-09-15T10:30:00Z"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie szczegółów ogłoszenia}]
+GET /api/v1/listings
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania — pobranie szczegółów ogłoszenia}]
+{
+  "title": "Pokój przy metrze",
+  "description": "Najlepszy pokój, nawet karaluchów nie ma",
+  "price": 1200.00,
+  "currency": "PLN",
+  "availableFrom": "2024-10-01"
+  "ownerContact": "numer telefonu: 424 242 424",
+  "area": 12.36,
+  "availableSince": "2057-12-28",
+  "matchScore": 0.95,
+  "location": {
+    "city": "Warszawa",
+    "district": "Mokotów",
+    "street": "Puławska 21"
+    "aptNumber": "37"
+  },
+  attributes: {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+  }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+200 OK
+\end{lstlisting}
+
+\subsection{Obsługa błędów}
+
+W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
+
+\begin{itemize}
+    \item \texttt{400 Bad Request} – niepoprawne dane wejściowe (błędy walidacji),
+    \item \texttt{403 Forbidden} – brak uprawnień do wskazanego zasobu,
+    \item \texttt{404 Not Found} – wskazane mieszkanie nie istnieje.
+\end{itemize}
+
+\begin{lstlisting}[style=json,caption={Przykładowa odpowiedź — błąd walidacji}]
+{
+  "timestamp": "2024-09-15T10:30:00Z",
+  "status": 400,
+  "error": "ValidationError",
+  "fieldErrors": [
+    { "field": "price", "message": "Cena musi być większa od 0" },
+    { "field": "title", "message": "Tytuł jest wymagany" }
+  ]
+}
+\end{lstlisting}
+
+\subsection{Diagram sekwencji wystawienia ogłoszenia}
+
+Na rysunku \ref{fig:listing-sequence} przedstawiono diagram sekwencji
+ilustrujący przebieg procesu wystawienia ogłoszenia po stronie systemu.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\textwidth]{wystawienie_ogloszenia_diagram.png}
+\caption{Diagram sekwencji procesu wystawienia ogłoszenia}
+\label{fig:listing-sequence}
+\end{figure}
+
+\subsection{Uwagi projektowe}
+Walidacja danych wejściowych realizowana
+jest przed wykonaniem logiki biznesowej, co pozwala na szybkie odrzucenie
+niepoprawnych żądań.
+
+%-------------------------------------------------------------
+
+%-------------------------------------------------------------
 
 \section{Wynajem pokoju}
 
@@ -1260,23 +1436,6 @@ oraz kontrolę reguł biznesowych (m.in. zakaz wynajmu własnych zasobów). Zast
 statusu pośredniego (\texttt{PENDING\_APPROVAL}) umożliwia dalszą obsługę procesu,
 np. akceptację przez wynajmującego.
 
-
-
-
-
-\section{Komunikacja pomiędzy użytkownikami (Wiadomości)}
-Poniższy rozdział opisuje wymianę wiadomości pomiędzy Lokatorem a Właścicielem w kontekście ogłoszenia.
-Z perspektywy domeny wiadomości są grupowane w \texttt{MessageThread}, co pozwala utrzymać kontekst rozmowy i ułatwia przegląd historii.
-
-\subsection{Utworzenie (lub pobranie) wątku rozmowy dla ogłoszenia}
-\begin{itemize}
-    \item Metoda HTTP: \texttt{POST}
-    \item Adres URL: \texttt{/api/v1/listings/\{listingId\}/threads}
-    \item Endpoint chroniony: tak (JWT)
-\end{itemize}
-
-\noindent\textbf{Reguły biznesowe:} jeśli wątek pomiędzy danym Lokatorem i Właścicielem już istnieje, system może zwrócić istniejący identyfikator wątku zamiast tworzyć nowy (idempotencja biznesowa).
-
 \begin{lstlisting}[style=http,caption={Żądanie HTTP — utworzenie wątku}]
 POST /api/v1/listings/c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a/threads
 Authorization: Bearer <JWT>
@@ -1290,30 +1449,7 @@ Accept: application/json
 }
 \end{lstlisting}
 
-\subsection{Wysłanie wiadomości}
-\begin{itemize}
-    \item Metoda HTTP: \texttt{POST}
-    \item Adres URL: \texttt{/api/v1/threads/\{threadId\}/messages}
-    \item Endpoint chroniony: tak (JWT)
-\end{itemize}
-
-\begin{lstlisting}[style=json,caption={Ciało żądania — wysłanie wiadomości}]
-{
-  "content": "Dzień dobry! Czy pokój jest dostępny od listopada?",
-  "clientMessageId": "3d9f4c3c-2b0a-4a2f-8a9a-1a2b3c4d5e6f"
-}
-\end{lstlisting}
-
-\noindent\textbf{Uwagi komunikacyjne:} pole \texttt{clientMessageId} pozwala klientowi na deduplikację w przypadku ponowień (analogicznie do \texttt{Idempotency-Key} na poziomie HTTP).
-
-\subsection{Pobranie historii rozmowy}
-\begin{itemize}
-    \item Metoda HTTP: \texttt{GET}
-    \item Adres URL: \texttt{/api/v1/threads/\{threadId\}/messages?page=0\&size=50}
-    \item Endpoint chroniony: tak (JWT)
-\end{itemize}
-
-\noindent System zwraca listę wiadomości z metadanymi autora oraz znacznikami czasu, co umożliwia odtworzenie chronologii rozmowy.
+\noindent\textbf{Uwagi komunikacyjne:} pole \texttt{clientMessageId} pozwala klientowi na deduplikację w przypadku ponowień.
 
 \section{Moderacja i zgłoszenia naruszeń}
 Moduł moderacji opiera się o obiekt \texttt{ViolationReport}, który reprezentuje „sprawę” w panelu administracyjnym. Zgłoszenie może dotyczyć ogłoszenia lub użytkownika.
