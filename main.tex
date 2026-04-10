@@ -1338,26 +1338,27 @@ Accept: application/json
 
 \begin{lstlisting}[style=json,caption={Ciało żądania — pobranie szczegółów ogłoszenia}]
 {
-  "title": "Pokój przy metrze",
-  "description": "Najlepszy pokój, nawet karaluchów nie ma",
-  "price": 1200.00,
-  "currency": "PLN",
-  "availableSince": "2024-10-01"
-  "availableUntil": "2057-12-28",
-  "ownerContact": "numer telefonu: 424 242 424",
-  "area": 12.36,
-  "location": {
+    "listingId": 33db8939-5830-47b6-8e1b-facb6ac94699,
+    "title": "Pokój przy metrze",
+    "description": "Najlepszy pokój, nawet karaluchów nie ma",
+    "price": 1200.00,
+    "currency": "PLN",
+    "availableSince": "2024-10-01"
+    "availableUntil": "2057-12-28",
+    "ownerContact": "numer telefonu: 424 242 424",
+    "area": 12.36,
+    "location": {
     "city": "Warszawa",
     "district": "Mokotów",
     "street": "Puławska 21"
     "aptNumber": "37"
-  },
-  attributes: {
-      "petsAllowed": true,
-      "nonSmokingOnly": true,
-      "closeToShops": false,
-      "profile": "student",
-  }
+    },
+    attributes: {
+        "petsAllowed": true,
+        "nonSmokingOnly": true,
+        "closeToShops": false,
+        "profile": "student",
+    }
 }
 \end{lstlisting}
 
@@ -1393,10 +1394,12 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
 \begin{itemize}
     \item \texttt{GET /api/v1/listings?city=Warszawa\&district=Praga\&street=Puławska\&aptNumber=42}
     \begin{lstlisting}[style=json,caption={Odpowiedź żądania}]
+[
     {
+      "listingId": 33db8939-5830-47b6-8e1b-facb6ac94699,
       "title": "Pokój przy metrze",
       "description": "Najlepszy pokój, nawet karaluchów nie ma",
-      "price": 1200.00,
+      "price": 1200.00,33db8939-5830-47b6-8e1b-facb6ac94699
       "currency": "PLN",
       "availableSince": "2024-10-01"
       "availableUntil": "2057-12-28",
@@ -1415,6 +1418,7 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
           "profile": "student",
       }
     }
+]
     \end{lstlisting}
     Możliwe jest filtrowanie po następujących parametrach:
     \begin{itemize}
