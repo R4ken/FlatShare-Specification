@@ -1201,7 +1201,8 @@ Content-Type: application/json
       "price": 420.00,
       "currency": "PLN",
       "area": 12.36,
-      "availableSince": "2057-12-28",
+      "availableUntil": "2027-09-21",
+      "availableSince": "2026-04-28",
       "matchScore": 0.95,
       "location": {
         "city": "Warszawa",
@@ -1257,7 +1258,7 @@ ocenie stopnia zgodności ofert z wykorzystaniem algorytmu punktowego
 i zwracane w postaci stronicowanej.
 %===========================================================%
 
-\section{Wystawienie ogłoszenia}
+\section{Wystawienie ogłoszenia i zarządzanie nim}
 
 Niniejszy rozdział opisuje proces wystawienia ogłoszenia przez użytkownika
 pełniącego rolę wynajmującego. Opis dotyczy wyłącznie logiki biznesowej
@@ -1275,18 +1276,7 @@ kontekstem użytkownika (identyfikator użytkownika oraz role).
     \item Endpoint chroniony: tak (JWT)
 \end{itemize}
 
-\noindent\textbf{Pozostałe operacje na zasobie \texttt{Listing}.} W praktycznym użyciu systemu niezbędne są również endpointy do pobierania i zarządzania widocznością ogłoszeń (US-L1, US-W3). Poniżej zebrano kluczowe ścieżki (bez rozwijania diagramów sekwencji):
-\begin{itemize}
-    \item \texttt{GET /api/v1/listings/\{listingId\}} -- szczegóły ogłoszenia.
-    \item \texttt{PATCH /api/v1/listings/\{listingId\}} -- edycja pól ogłoszenia (tylko właściciel zasobu).
-    \item \texttt{POST /api/v1/listings/\{listingId\}/hide} -- ukrycie ogłoszenia (przejście do \texttt{HIDDEN}).
-    \item \texttt{POST /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia (przejście do \texttt{ARCHIVED}).
-    \item \textcolor{red}{\texttt{POST /api/v1/listings/\{listingId\}/unavailability} -- dodanie okresu niedostępności (np. remont), co blokuje możliwość rezerwacji w podanym terminie.}
-\end{itemize}
-Dzięki temu cykl życia ogłoszenia opisany na diagramie stanów \\
-(\texttt{Draft/UnderReview/Active/Hidden/Archived}) ma bezpośrednie odzwierciedlenie w API.
-
-\subsection{Przykładowe żąd anie}
+\subsection{Przykładowe żądanie}
 
 \begin{lstlisting}[style=http,caption={Żądanie HTTP — wystawienie szczegółów ogłoszenia}]
 POST /api/v1/listings
@@ -1301,11 +1291,10 @@ Accept: application/json
   "description": "Najlepszy pokój, nawet karaluchów nie ma",
   "price": 1200.00,
   "currency": "PLN",
-  "availableFrom": "2024-10-01"
+  "availableSince": "2024-10-01"
+  "availableUntil": "2057-12-28",
   "ownerContact": "numer telefonu: 424 242 424",
   "area": 12.36,
-  "availableSince": "2057-12-28",
-  "matchScore": 0.95,
   "location": {
     "city": "Warszawa",
     "district": "Mokotów",
@@ -1329,19 +1318,19 @@ ogłoszenie zostaje zapisane w systemie.
 \begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
 201 Created
 Location: /api/v1/listings/c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a
-Content-Type: application/json
+Content-Type: application/json  
 \end{lstlisting}
 
 \begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
 {
-  "listingId": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a",
+  "id": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a",
   "status": "ACTIVE",
   "createdAt": "2024-09-15T10:30:00Z"
 }
 \end{lstlisting}
 
 \begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie szczegółów ogłoszenia}]
-GET /api/v1/listings
+GET /api/v1/listings/{listingId}
 Authorization: Bearer <JWT>
 Content-Type: application/json
 Accept: application/json
@@ -1349,27 +1338,27 @@ Accept: application/json
 
 \begin{lstlisting}[style=json,caption={Ciało żądania — pobranie szczegółów ogłoszenia}]
 {
-  "title": "Pokój przy metrze",
-  "description": "Najlepszy pokój, nawet karaluchów nie ma",
-  "price": 1200.00,
-  "currency": "PLN",
-  "availableFrom": "2024-10-01"
-  "ownerContact": "numer telefonu: 424 242 424",
-  "area": 12.36,
-  "availableSince": "2057-12-28",
-  "matchScore": 0.95,
-  "location": {
+    "id": 33db8939-5830-47b6-8e1b-facb6ac94699,
+    "title": "Pokój przy metrze",
+    "description": "Najlepszy pokój, nawet karaluchów nie ma",
+    "price": 1200.00,
+    "currency": "PLN",
+    "availableSince": "2024-10-01"
+    "availableUntil": "2057-12-28",
+    "ownerContact": "numer telefonu: 424 242 424",
+    "area": 12.36,
+    "location": {
     "city": "Warszawa",
     "district": "Mokotów",
     "street": "Puławska 21"
     "aptNumber": "37"
-  },
-  attributes: {
-      "petsAllowed": true,
-      "nonSmokingOnly": true,
-      "closeToShops": false,
-      "profile": "student",
-  }
+    },
+    attributes: {
+        "petsAllowed": true,
+        "nonSmokingOnly": true,
+        "closeToShops": false,
+        "profile": "student",
+    }
 }
 \end{lstlisting}
 
@@ -1399,6 +1388,79 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
 }
 \end{lstlisting}
 
+% Reszta
+
+\noindent\textbf{Pozostałe operacje na zasobie \texttt{Listing}.} W praktycznym użyciu systemu niezbędne są również endpointy do pobierania i zarządzania widocznością ogłoszeń (US-L1, US-W3). Poniżej zebrano kluczowe ścieżki (bez rozwijania diagramów sekwencji):
+\begin{itemize}
+    \item \texttt{GET /api/v1/listings?city=Warszawa\&district=Praga\&street=Puławska\&aptNumber=42}
+    \begin{lstlisting}[style=json,caption={Odpowiedź żądania}]
+[
+    {
+      "id": 33db8939-5830-47b6-8e1b-facb6ac94699,
+      "title": "Pokój przy metrze",
+      "description": "Najlepszy pokój, nawet karaluchów nie ma",
+      "price": 1200.00,33db8939-5830-47b6-8e1b-facb6ac94699
+      "currency": "PLN",
+      "availableSince": "2024-10-01"
+      "availableUntil": "2057-12-28",
+      "ownerContact": "numer telefonu: 424 242 424",
+      "area": 12.36,
+      "location": {
+        "city": "Warszawa",
+        "district": "Mokotów",
+        "street": "Puławska 21"
+        "aptNumber": "42"
+      },
+      attributes: {
+          "petsAllowed": true,
+          "nonSmokingOnly": true,
+          "closeToShops": false,
+          "profile": "student",
+      }
+    }
+]
+    \end{lstlisting}
+    Możliwe jest filtrowanie po następujących parametrach:
+    \begin{itemize}
+        \item city
+        \item district
+        \item street
+        \item aptNumber
+        \item ownerId
+    \end{itemize}
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}} -- edycja pól ogłoszenia (tylko właściciel zasobu). W tym żądaniu podaje się tylko te pola które chcemy poddać edycji. Pola Id nie można zedytować. Nie ustalono kiedy można edytować ogłoszenie. Odpowiedź jest taka sama jak w prypadku zwykłego pobrania szczegółów.
+    \begin{lstlisting}[style=json,caption={Żądanie edycji ogłoszenia}]
+    {
+      "price": 10000000.0,
+      "availableSince": "3050-03-20"
+    }
+    \end{lstlisting}
+
+    \item \texttt{GET /api/v1/listings/\{listingId\}} -- pobranie listingu o podanym id
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/submit} -- podanie ogłoszenia pod recenzję administratora
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/request-fixes} -- żądanie poprawek przez administratora
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/approve} -- akceptacja ogłoszenia przez administratora
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/hide} -- ukrycie ogłoszenia
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/publish} -- opublikowanie ukrytego ogłoszenia
+
+    \item \texttt{PATCH /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia
+
+    \item \texttt{GET /api/v1/listings/all} -- pobranie wszystkich ogłoszeń 
+\end{itemize}
+Te endpointy pozwalają zaimplementować cykl ogłoszenia ogłoszenia.
+Tożsamość (jwt bearer) użytkownika wywołującego metodę pozwala określić
+czy jest to administrator czy właściciel ogłoszenia.
+
+
+%==========================
+
+%===========================
+
 \subsection{Diagram sekwencji wystawienia ogłoszenia}
 
 Na rysunku \ref{fig:listing-sequence} przedstawiono diagram sekwencji
@@ -1417,8 +1479,63 @@ jest przed wykonaniem logiki biznesowej, co pozwala na szybkie odrzucenie
 niepoprawnych żądań.
 
 %-------------------------------------------------------------
+\section{Zarządzanie zdjęciami ogłoszeń}
+\begin{lstlisting}[style=http,caption={Żądanie HTTP - Dodanie Zdjęcia do ogłoszenia}]
+POST /api/v1/listings/33db8939-5830-47b6-8e1b-facb6ac94699/photos
+Authorization: Bearer <JWT>
+Content-Type: multipart/form-data
+Accept: application/json
+\end{lstlisting}
 
-%-------------------------------------------------------------
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+201 Created
+Location: /api/v1/listings/33db8939-5830-47b6-8e1b-facb6ac94699/photos/98606e9e-e43d-440c-8906-ee6dfc110198
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP - Pobranie danego zdjęcia}]
+GET /api/v1/listings/33db8939-5830-47b6-8e1b-facb6ac94699/photos/98606e9e-e43d-440c-8906-ee6dfc110198
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+Content-Type: image/jpeg
+200 OK
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP - Wypisanie listy zdjęć danego ogłoszenia}]
+GET /api/v1/listings/33db8939-5830-47b6-8e1b-facb6ac94699/photos/
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+Content-Type: application/json
+200 OK
+Body:
+{
+  "listingId": 33db8939-5830-47b6-8e1b-facb6ac94699
+  "photos": [
+    "98606e9e-e43d-440c-8906-ee6dfc110198", "2c4fb159-1ede-424b-bd4a-bfd9e46f0894",
+    "be515eb1-ed6d-4198-8be3-c8eca8a9983f"
+  ]
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP - Usunięcie danego zdjęcia}]
+DELETE /api/v1/listings/33db8939-5830-47b6-8e1b-facb6ac94699/photos/be515eb1-ed6d-4198-8be3-c8eca8a9983f
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
+Content-Type: application/json
+204 NO CONTENT
+\end{lstlisting}
+%-------------------------------------------------------------%-------------------------------------------------------------
 
 \section{Wynajem pokoju}
 
