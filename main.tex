@@ -1430,6 +1430,7 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
         \item aptNumber
         \item ownerId
     \end{itemize}
+
     \item \texttt{PATCH /api/v1/listings/\{listingId\}} -- edycja pól ogłoszenia (tylko właściciel zasobu). W tym żądaniu podaje się tylko te pola które chcemy poddać edycji. Pola Id nie można zedytować. Nie ustalono kiedy można edytować ogłoszenie. Odpowiedź jest taka sama jak w prypadku zwykłego pobrania szczegółów.
     \begin{lstlisting}[style=json,caption={Żądanie edycji ogłoszenia}]
     {
@@ -1451,8 +1452,6 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/publish} -- opublikowanie ukrytego ogłoszenia
 
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia
-
-    \item \texttt{GET /api/v1/listings/all} -- pobranie wszystkich ogłoszeń 
 \end{itemize}
 Te endpointy pozwalają zaimplementować cykl ogłoszenia ogłoszenia.
 Tożsamość (jwt bearer) użytkownika wywołującego metodę pozwala określić
