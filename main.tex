@@ -1214,12 +1214,13 @@ Content-Type: application/json
           "street": "Puławska 21"
           "aptNumber": "37"
         },
-        attributes: {
+        "attributes": {
             "petsAllowed": true,
             "nonSmokingOnly": true,
             "closeToShops": false,
             "profile": "student",
-        }
+        },
+        "status": "Active"
       },
       "matchScore": 0.95,
     },
@@ -1310,14 +1311,37 @@ Accept: application/json
     "street": "Puławska 21"
     "aptNumber": "37"
   },
-  attributes: {
+  "attributes": {
       "petsAllowed": true,
       "nonSmokingOnly": true,
       "closeToShops": false,
       "profile": "student",
-  }
+  },
+  "status": "Active",
+  "unavailability": [
+        {
+          "Since": "2022-04-13",
+          "Until": "2023-05-20",
+          "Message": "Remont"
+        },
+        {
+          "Since": "2024-04-13",
+          "Until": "2025-05-20",
+          "Message": "Wynajęte"
+        }
+      ] 
 }
 \end{lstlisting}
+
+Możliwe statusy to (zgodnie z diagramem stanów Listingu):
+\begin{itemize}
+  \item Draft
+  \item UnderReview
+  \item Active
+  \item Hidden,
+  \item HiddenByModeration
+  \item Archived
+\end{itemize}
 
 \subsection{Przykładowa odpowiedź — sukces}
 
@@ -1363,12 +1387,25 @@ Accept: application/json
     "street": "Puławska 21"
     "aptNumber": "37"
     },
-    attributes: {
-        "petsAllowed": true,
-        "nonSmokingOnly": true,
-        "closeToShops": false,
-        "profile": "student",
-    }
+    "attributes": {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+    },
+   "status": "Active",
+   "unavailability": [
+        {
+          "Since": "2022-04-13",
+          "Until": "2023-05-20",
+          "Message": "Remont"
+        },
+        {
+          "Since": "2024-04-13",
+          "Until": "2025-05-20",
+          "Message": "Wynajęte"
+        }
+      ] 
 }
 \end{lstlisting}
 
@@ -1422,12 +1459,25 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
         "street": "Puławska 21"
         "aptNumber": "42"
       },
-      attributes: {
-          "petsAllowed": true,
-          "nonSmokingOnly": true,
-          "closeToShops": false,
-          "profile": "student",
-      }
+      "attributes": {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+      },
+      "status": "Active",
+      "unavailability": [
+        {
+          "Since": "2022-04-13",
+          "Until": "2023-05-20",
+          "Message": "Remont"
+        },
+        {
+          "Since": "2024-04-13",
+          "Until": "2025-05-20",
+          "Message": "Wynajęte"
+        }
+      ] 
     }
 ]
     \end{lstlisting}
@@ -1461,7 +1511,16 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/publish} -- opublikowanie ukrytego ogłoszenia
 
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia
-\end{itemize}
+
+    \item \texttt{POST /api/v1/\{listindId\}/unavailability} -- dodanie okresu niedostępności
+          \begin{lstlisting}[style=json,caption={Ciała żądania dodania okresu niedostępności}]
+          {
+            "Since": "2022-04-13",
+            "Until": "2077-05-20",
+            "Message": "Remont"
+          }
+          \end{lstlisting}
+          \end{itemize}
 Te endpointy pozwalają zaimplementować cykl ogłoszenia ogłoszenia.
 Tożsamość (jwt bearer) użytkownika wywołującego metodę pozwala określić
 czy jest to administrator czy właściciel ogłoszenia.
@@ -1622,7 +1681,7 @@ W trakcie realizacji procesu wynajmu mogą wystąpić następujące błędy:
 
 \begin{itemize}
     \item \texttt{400 Bad Request} - niepoprawny zakres dat,
-    \item \texttt{403 Forbidden} - próba wynajmu przez użytkownika niebędącego \texit{Tenantem},
+    \item \texttt{403 Forbidden} - próba wynajmu przez użytkownika niebędącego Tenantem,
     \item \texttt{404 Not Found} - wskazany pokój nie istnieje,
     \item \texttt{409 Conflict} - pokój jest niedostępny w wybranym terminie.
 \end{itemize}
@@ -1830,6 +1889,115 @@ Proces wynajmu uwzględnia walidację zakresu dat, weryfikację dostępności po
 oraz kontrolę reguł biznesowych (m.in. zakaz wynajmu własnych zasobów). Zastosowanie
 statusu pośredniego (\texttt{PENDING\_APPROVAL}) umożliwia dalszą obsługę procesu,
 np. akceptację przez wynajmującego.
+
+%===============================================
+\section{Zarządzanie płatnościami}
+
+W tym rozdziale opisano endpointy służące do odczytu informacji o płatnościach.
+Operacje mają charakter tylko do odczytu i zwracają obiekt \texttt{PaymentDTO}, który
+reprezentuje aktualny stan płatności powiązanej z rezerwacją.
+
+\subsection{Model odpowiedzi \texttt{PaymentDTO}}
+
+Każda poprawna odpowiedź endpointów płatności zwraca dane w tym samym formacie:
+
+\begin{lstlisting}[style=json,caption={Struktura odpowiedzi — PaymentDTO}]
+{
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Succeeded",
+  "totalValue": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+Możliwe statusy:
+\begin{itemize}
+  \item Initiated
+  \item Redirected
+  \item Succeeded
+  \item Failed
+  \item Cancelled
+\subsection{Pobranie płatności po identyfikatorze płatności}
+
+Endpoint odpowiada metodzie kontrolera \texttt{GetById([FromRoute] Guid paymentId)}.
+Służy do pobrania szczegółów konkretnej płatności na podstawie jej identyfikatora.
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{GET}
+    \item Adres URL: \texttt{/api/v1/payments/\{paymentId\}}
+    \item Parametr ścieżki: \texttt{paymentId} --- identyfikator płatności typu \texttt{Guid}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+Status płatności może pobrać tylko jedna ze stron tranzakcji Tenant-Owner (Owner to znaczy właściciel listingu na który została wykonana rezerwacja). Wyjątkiem jest administrator, który może podejrzeć status każdej płatności.
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie płatności po paymentId}]
+GET /api/v1/payments/77889900-aabb-ccdd-eeff-112233445566
+Authorization: Bearer <JWT>
+Accept: application/json
+\end{lstlisting}
+
+\noindent\textbf{Ciało żądania JSON:} brak. Parametr \texttt{paymentId} jest przekazywany w ścieżce URL.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po paymentId, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — pobranie płatności po paymentId, sukces}]
+{
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Suceeded",
+  "totalValue": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po paymentId, błąd}]
+404 Not Found
+Content-Type: application/json
+\end{lstlisting}
+
+\subsection{Pobranie płatności po identyfikatorze rezerwacji}
+
+Endpoint odpowiada metodzie kontrolera \texttt{GetByBookingId([FromQuery] Guid bookingId)}.
+Służy do pobrania płatności przypisanej do konkretnej rezerwacji. Parametr jest
+przekazywany w query string, ponieważ nie identyfikuje bezpośrednio zasobu płatności,
+ale zasób nadrzędny --- rezerwację.
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{GET}
+    \item Adres URL: \texttt{/api/v1/payments?bookingId=\{bookingId\}}
+    \item Parametr query: \texttt{bookingId} --- identyfikator rezerwacji typu \texttt{Guid}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie płatności po bookingId}]
+GET /api/v1/payments?bookingId=aa11bb22-cc33-dd44-ee55-ff6677889900
+Authorization: Bearer <JWT>
+Accept: application/json
+\end{lstlisting}
+
+\noindent\textbf{Ciało żądania JSON:} brak. Parametr \texttt{bookingId} jest przekazywany w adresie URL jako parametr zapytania.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po bookingId, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — pobranie płatności po bookingId, sukces}]
+{
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Initiated",
+  "totalValue": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+
 
 
 \section{Moderacja i zgłoszenia naruszeń}
