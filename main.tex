@@ -1220,7 +1220,19 @@ Content-Type: application/json
             "closeToShops": false,
             "profile": "student",
         },
-        "status": "Active"
+        "status": "Active",
+        "unavailability": [
+          {
+            "Since": "2022-04-13",
+            "Until": "2023-05-20",
+            "Message": "Remont"
+          },
+          {
+            "Since": "2024-04-13",
+            "Until": "2025-05-20",
+            "Message": "Wynajęte"
+          }
+        ] 
       },
       "matchScore": 0.95,
     },
@@ -1316,20 +1328,7 @@ Accept: application/json
       "nonSmokingOnly": true,
       "closeToShops": false,
       "profile": "student",
-  },
-  "status": "Active",
-  "unavailability": [
-        {
-          "Since": "2022-04-13",
-          "Until": "2023-05-20",
-          "Message": "Remont"
-        },
-        {
-          "Since": "2024-04-13",
-          "Until": "2025-05-20",
-          "Message": "Wynajęte"
-        }
-      ] 
+  }
 }
 \end{lstlisting}
 
