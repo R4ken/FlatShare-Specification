@@ -636,6 +636,7 @@ Dodatkowo, w procesach zależnych od dostępności zasobu (np. rezerwacja termin
 system musi obsłużyć sytuacje wyścigu (\texttt{409 Conflict}) --- przykładowo, gdy dwie osoby próbują zarezerwować ten sam pokój w tym samym okresie.
 
 \subsection{Wspólny format odpowiedzi błędów}
+\label{sec:CommonErrs}
 Odpowiedzi błędów są ustandaryzowane, aby klient mógł automatycznie interpretować problem. Minimalny zestaw pól obejmuje:
 \texttt{timestamp}, \texttt{status}, \texttt{error} oraz (opcjonalnie) \texttt{fieldErrors} dla walidacji. W praktyce implementacja może również zwracać
 \texttt{message} oraz \texttt{path} (ścieżkę żądania), jednak w przykładach utrzymano format uproszczony.
@@ -1213,12 +1214,25 @@ Content-Type: application/json
           "street": "Puławska 21"
           "aptNumber": "37"
         },
-        attributes: {
+        "attributes": {
             "petsAllowed": true,
             "nonSmokingOnly": true,
             "closeToShops": false,
             "profile": "student",
-        }
+        },
+        "status": "Active",
+        "unavailability": [
+          {
+            "Since": "2022-04-13",
+            "Until": "2023-05-20",
+            "Message": "Remont"
+          },
+          {
+            "Since": "2024-04-13",
+            "Until": "2025-05-20",
+            "Message": "Wynajęte"
+          }
+        ] 
       },
       "matchScore": 0.95,
     },
@@ -1309,7 +1323,7 @@ Accept: application/json
     "street": "Puławska 21"
     "aptNumber": "37"
   },
-  attributes: {
+  "attributes": {
       "petsAllowed": true,
       "nonSmokingOnly": true,
       "closeToShops": false,
@@ -1317,6 +1331,16 @@ Accept: application/json
   }
 }
 \end{lstlisting}
+
+Możliwe statusy to (zgodnie z diagramem stanów Listingu):
+\begin{itemize}
+  \item Draft
+  \item UnderReview
+  \item Active
+  \item Hidden,
+  \item HiddenByModeration
+  \item Archived
+\end{itemize}
 
 \subsection{Przykładowa odpowiedź — sukces}
 
@@ -1362,12 +1386,25 @@ Accept: application/json
     "street": "Puławska 21"
     "aptNumber": "37"
     },
-    attributes: {
-        "petsAllowed": true,
-        "nonSmokingOnly": true,
-        "closeToShops": false,
-        "profile": "student",
-    }
+    "attributes": {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+    },
+   "status": "Active",
+   "unavailability": [
+        {
+          "Since": "2022-04-13",
+          "Until": "2023-05-20",
+          "Message": "Remont"
+        },
+        {
+          "Since": "2024-04-13",
+          "Until": "2025-05-20",
+          "Message": "Wynajęte"
+        }
+      ] 
 }
 \end{lstlisting}
 
@@ -1421,12 +1458,25 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
         "street": "Puławska 21"
         "aptNumber": "42"
       },
-      attributes: {
-          "petsAllowed": true,
-          "nonSmokingOnly": true,
-          "closeToShops": false,
-          "profile": "student",
-      }
+      "attributes": {
+      "petsAllowed": true,
+      "nonSmokingOnly": true,
+      "closeToShops": false,
+      "profile": "student",
+      },
+      "status": "Active",
+      "unavailability": [
+        {
+          "Since": "2022-04-13",
+          "Until": "2023-05-20",
+          "Message": "Remont"
+        },
+        {
+          "Since": "2024-04-13",
+          "Until": "2025-05-20",
+          "Message": "Wynajęte"
+        }
+      ] 
     }
 ]
     \end{lstlisting}
@@ -1460,7 +1510,16 @@ W trakcie przetwarzania żądania mogą wystąpić następujące błędy:
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/publish} -- opublikowanie ukrytego ogłoszenia
 
     \item \texttt{PATCH /api/v1/listings/\{listingId\}/archive} -- archiwizacja ogłoszenia
-\end{itemize}
+
+    \item \texttt{POST /api/v1/\{listindId\}/unavailability} -- dodanie okresu niedostępności
+          \begin{lstlisting}[style=json,caption={Ciała żądania dodania okresu niedostępności}]
+          {
+            "Since": "2022-04-13",
+            "Until": "2077-05-20",
+            "Message": "Remont"
+          }
+          \end{lstlisting}
+          \end{itemize}
 Te endpointy pozwalają zaimplementować cykl ogłoszenia ogłoszenia.
 Tożsamość (jwt bearer) użytkownika wywołującego metodę pozwala określić
 czy jest to administrator czy właściciel ogłoszenia.
@@ -1546,7 +1605,7 @@ Content-Type: application/json
 \end{lstlisting}
 %-------------------------------------------------------------%-------------------------------------------------------------
 
-\section{Wynajem pokoju}
+\section{Wynajem pokoju - \textit{Booking}}
 
 Niniejszy rozdział opisuje proces wynajmu pokoju przez użytkownika pełniącego
 rolę lokatora. Opis dotyczy wyłącznie logiki biznesowej realizowanej po stronie
@@ -1560,25 +1619,25 @@ kontekstem użytkownika (identyfikator użytkownika oraz role).
 
 \begin{itemize}
     \item Metoda HTTP: \texttt{POST}
-    \item Adres URL: \texttt{/api/v1/rentals}
+    \item Adres URL: \texttt{/api/v1/bookings}
     \item Endpoint chroniony: tak (JWT)
 \end{itemize}
 
-\noindent\textbf{Dodatkowe endpointy procesu rezerwacji i płatności.} Utworzenie „wynajmu” (\texttt{POST /rentals}) inicjuje obiekt \texttt{Booking}.
+\noindent\textbf{Dodatkowe endpointy procesu rezerwacji i płatności.} Utworzenie „wynajmu” (\texttt{POST /bookings}) inicjuje obiekt \texttt{Booking}.
 Aby domknąć proces z diagramu przypadków użycia (akceptacja/odrzucenie, anulowanie, płatność), API udostępnia następujące operacje:
 \begin{itemize}
-    \item \texttt{POST /api/v1/rentals/\{rentalId\}/accept} --- akceptacja rezerwacji przez Właściciela (US-W4).
-    \item \texttt{POST /api/v1/rentals/\{rentalId\}/reject} --- odrzucenie rezerwacji przez Właściciela (US-W4).
-    \item \texttt{POST /api/v1/rentals/\{rentalId\}/cancel} --- anulowanie rezerwacji przez Lokatora (wariant z rysunku modułu wynajmu).
-    \item \texttt{POST /api/v1/rentals/\{rentalId\}/pay} --- inicjacja płatności (zwraca URL do bramki lub dane redirectu).
-    \item \texttt{GET /api/v1/rentals/\{rentalId\}} --- podgląd statusu rezerwacji (używane również przez integrację płatności do weryfikacji stanu).
+    \item \texttt{POST /api/v1/bookings/\{bookingId\}/accept} --- akceptacja rezerwacji przez Właściciela (US-W4).
+    \item \texttt{POST /api/v1/bookings/\{bookingId\}/reject} --- odrzucenie rezerwacji przez Właściciela (US-W4).
+    \item \texttt{POST /api/v1/bookings/\{bookingId\}/cancel} --- anulowanie rezerwacji przez Lokatora (wariant z rysunku modułu wynajmu).
+    \item \texttt{POST /api/v1/bookings/\{bookingId\}/pay} --- inicjacja płatności (zwraca URL do bramki lub dane redirectu).
+    \item \texttt{GET /api/v1/bookings/\{bookingId\}} --- podgląd statusu rezerwacji (używane również przez integrację płatności do weryfikacji stanu).
 \end{itemize}
 
 
 \subsection{Przykładowe żądanie}
 
 \begin{lstlisting}[style=http,caption={Żądanie HTTP — wynajem pokoju}]
-POST /api/v1/rentals
+POST /api/v1/bookings
 Authorization: Bearer <JWT>
 Content-Type: application/json
 Accept: application/json
@@ -1586,7 +1645,7 @@ Accept: application/json
 
 \begin{lstlisting}[style=json,caption={Ciało żądania — wynajem pokoju}]
 {
-  "roomId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "listingId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "startDate": "2024-11-01",
   "endDate": "2025-06-30"
 }
@@ -1600,18 +1659,18 @@ zatwierdzenie.
 
 \begin{lstlisting}[style=http,caption={Odpowiedź HTTP — sukces}]
 201 Created
-Location: /api/v1/rentals/aa11bb22-cc33-dd44-ee55-ff6677889900
+Location: /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900
 Content-Type: application/json
 \end{lstlisting}
 
 \begin{lstlisting}[style=json,caption={Ciało odpowiedzi — sukces}]
 {
-  "rentalId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
   "status": "PENDING_APPROVAL",
   "createdAt": "2024-10-15T14:00:00Z",
   "totalPrice": 9600.00,
   "currency": "PLN",
-  "resourceLink": "/api/v1/rentals/aa11bb22-cc33-dd44-ee55-ff6677889900"
+  "resourceLink": "/api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900"
 }
 \end{lstlisting}
 
@@ -1620,10 +1679,10 @@ Content-Type: application/json
 W trakcie realizacji procesu wynajmu mogą wystąpić następujące błędy:
 
 \begin{itemize}
-    \item \texttt{400 Bad Request} – niepoprawny zakres dat,
-    \item \texttt{403 Forbidden} – próba wynajmu własnego pokoju,
-    \item \texttt{404 Not Found} – wskazany pokój nie istnieje,
-    \item \texttt{409 Conflict} – pokój jest niedostępny w wybranym terminie.
+    \item \texttt{400 Bad Request} - niepoprawny zakres dat,
+    \item \texttt{403 Forbidden} - próba wynajmu przez użytkownika niebędącego Tenantem,
+    \item \texttt{404 Not Found} - wskazany pokój nie istnieje,
+    \item \texttt{409 Conflict} - pokój jest niedostępny w wybranym terminie.
 \end{itemize}
 
 \begin{lstlisting}[style=json,caption={Przykładowa odpowiedź — pokój zajęty}]
@@ -1633,6 +1692,181 @@ W trakcie realizacji procesu wynajmu mogą wystąpić następujące błędy:
   "unavailableDates": [
     { "from": "2024-12-01", "to": "2025-01-01" }
   ]
+}
+\end{lstlisting}
+
+\subsection{Przykłady użycia pozostałych endpointów procesu rezerwacji}
+
+Poniżej przedstawiono pozostałe endpointy procesu w jednolitym układzie:
+\textit{żądanie HTTP}, \textit{ciało żądania JSON}, \textit{poprawna odpowiedź serwera}.
+Odpowiedzi informujące o błędach są sformatowne w ten sam sposób zgodnie z \hyperref[sec:CommonErrs]{formatem błędów}.
+
+\subsubsection{Akceptacja rezerwacji przez właściciela}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — akceptacja rezerwacji}]
+POST /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900/accept
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — akceptacja rezerwacji, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — akceptacja rezerwacji, sukces}]
+{
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "PENDING_PAYMENT",
+  "acceptedAt": "2024-10-16T09:30:00Z",
+  "paymentRequiredUntil": "2024-10-17T09:30:00Z",
+}
+\end{lstlisting}
+
+\subsubsection{Odrzucenie rezerwacji przez właściciela}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — odrzucenie rezerwacji}]
+POST /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900/reject
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania — odrzucenie rezerwacji}]
+{
+  "reason": "Zmieniłem zdanie i planuję podnieść cenę pokoju ;>)))"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — odrzucenie rezerwacji, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — odrzucenie rezerwacji, sukces}]
+{
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "REJECTED",
+  "rejectedAt": "2024-10-16T09:35:00Z",
+  "reason": "Zmieniłem zdanie i planuję podnieść cenę pokoju ;>)))"
+}
+\end{lstlisting}
+
+\subsubsection{Anulowanie rezerwacji przez lokatora}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — anulowanie rezerwacji}]
+POST /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900/cancel
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania — anulowanie rezerwacji}]
+{
+  "reason": "Zmiana planów najmu."
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — anulowanie rezerwacji, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — anulowanie rezerwacji, sukces}]
+{
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "CANCELLED",
+  "cancelledAt": "2024-10-16T10:00:00Z",
+  "refundStatus": "NOT_APPLICABLE"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — anulowanie rezerwacji, błąd}]
+409 Conflict
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — anulowanie rezerwacji, błąd}]
+{
+  "error": "CancellationNotAllowed",
+  "timestamp": "2024-10-16T10:00:00Z"
+  "message": "Nie można anulować rezerwacji po rozpoczęciu okresu najmu.",
+  "bookingStatus": "CONFIRMED"
+}
+\end{lstlisting}
+
+\subsubsection{Inicjacja płatności za rezerwację}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — inicjacja płatności}]
+POST /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900/pay
+Authorization: Bearer <JWT>
+Content-Type: application/json
+Accept: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało żądania — inicjacja płatności}]
+{
+  "paymentMethod": "CARD",
+  "returnUrl": "https://flatshare.example/app/payments/return",
+  "cancelUrl": "https://flatshare.example/app/payments/cancel"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — inicjacja płatności, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — inicjacja płatności, sukces}]
+{
+  "paymentId": "pay-77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "INITIATED",
+  "redirectUrl": "https://payments.example/redirect/abc123",
+  "amount": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — inicjacja płatności, błąd}]
+409 Conflict
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — inicjacja płatności, błąd}]
+{
+  "error": "PaymentNotAvailable",
+  "message": "Płatność może zostać uruchomiona wyłącznie dla rezerwacji w statusie PENDING_PAYMENT.",
+}
+\end{lstlisting}
+
+\subsubsection{Pobranie szczegółów rezerwacji}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie szczegółów rezerwacji}]
+GET /api/v1/bookings/aa11bb22-cc33-dd44-ee55-ff6677889900
+Authorization: Bearer <JWT>
+Accept: application/json
+\end{lstlisting}
+
+\noindent\textbf{Ciało żądania JSON:} brak. Endpoint \texttt{GET} nie wymaga przesyłania danych w treści żądania.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie szczegółów rezerwacji, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — pobranie szczegółów rezerwacji, sukces}]
+{
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "listingId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "tenantId": "bb22cc33-dd44-ee55-ff66-001122334455",
+  "status": "CONFIRMED",
+  "startDate": "2024-11-01",
+  "endDate": "2025-06-30",
+  "totalPrice": 9600.00,
+  "currency": "PLN",
+  "paymentStatus": "SUCCEEDED"
 }
 \end{lstlisting}
 
@@ -1655,20 +1889,115 @@ oraz kontrolę reguł biznesowych (m.in. zakaz wynajmu własnych zasobów). Zast
 statusu pośredniego (\texttt{PENDING\_APPROVAL}) umożliwia dalszą obsługę procesu,
 np. akceptację przez wynajmującego.
 
-\begin{lstlisting}[style=http,caption={Żądanie HTTP — utworzenie wątku}]
-POST /api/v1/listings/c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a/threads
+%===============================================
+\section{Zarządzanie płatnościami}
+
+W tym rozdziale opisano endpointy służące do odczytu informacji o płatnościach.
+Operacje mają charakter tylko do odczytu i zwracają obiekt \texttt{PaymentDTO}, który
+reprezentuje aktualny stan płatności powiązanej z rezerwacją.
+
+\subsection{Model odpowiedzi \texttt{PaymentDTO}}
+
+Każda poprawna odpowiedź endpointów płatności zwraca dane w tym samym formacie:
+
+\begin{lstlisting}[style=json,caption={Struktura odpowiedzi — PaymentDTO}]
+{
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Succeeded",
+  "totalValue": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+Możliwe statusy:
+\begin{itemize}
+  \item Initiated
+  \item Redirected
+  \item Succeeded
+  \item Failed
+  \item Cancelled
+\subsection{Pobranie płatności po identyfikatorze płatności}
+
+Endpoint odpowiada metodzie kontrolera \texttt{GetById([FromRoute] Guid paymentId)}.
+Służy do pobrania szczegółów konkretnej płatności na podstawie jej identyfikatora.
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{GET}
+    \item Adres URL: \texttt{/api/v1/payments/\{paymentId\}}
+    \item Parametr ścieżki: \texttt{paymentId} --- identyfikator płatności typu \texttt{Guid}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+Status płatności może pobrać tylko jedna ze stron tranzakcji Tenant-Owner (Owner to znaczy właściciel listingu na który została wykonana rezerwacja). Wyjątkiem jest administrator, który może podejrzeć status każdej płatności.
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie płatności po paymentId}]
+GET /api/v1/payments/77889900-aabb-ccdd-eeff-112233445566
 Authorization: Bearer <JWT>
 Accept: application/json
 \end{lstlisting}
 
-\begin{lstlisting}[style=json,caption={Odpowiedź — identyfikator wątku}]
+\noindent\textbf{Ciało żądania JSON:} brak. Parametr \texttt{paymentId} jest przekazywany w ścieżce URL.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po paymentId, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — pobranie płatności po paymentId, sukces}]
 {
-  "threadId": "4f5d2f32-5c8f-4a1a-9e35-2e6f0d9b1a77",
-  "listingId": "c92f1c80-2d3a-4e5b-9a1f-8b2c3d4e5f6a"
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Suceeded",
+  "totalValue": 9600.00,
+  "currency": "PLN"
 }
 \end{lstlisting}
 
-\noindent\textbf{Uwagi komunikacyjne:} pole \texttt{clientMessageId} pozwala klientowi na deduplikację w przypadku ponowień.
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po paymentId, błąd}]
+404 Not Found
+Content-Type: application/json
+\end{lstlisting}
+
+\subsection{Pobranie płatności po identyfikatorze rezerwacji}
+
+Endpoint odpowiada metodzie kontrolera \texttt{GetByBookingId([FromQuery] Guid bookingId)}.
+Służy do pobrania płatności przypisanej do konkretnej rezerwacji. Parametr jest
+przekazywany w query string, ponieważ nie identyfikuje bezpośrednio zasobu płatności,
+ale zasób nadrzędny --- rezerwację.
+
+\begin{itemize}
+    \item Metoda HTTP: \texttt{GET}
+    \item Adres URL: \texttt{/api/v1/payments?bookingId=\{bookingId\}}
+    \item Parametr query: \texttt{bookingId} --- identyfikator rezerwacji typu \texttt{Guid}
+    \item Endpoint chroniony: tak (JWT)
+\end{itemize}
+
+\begin{lstlisting}[style=http,caption={Żądanie HTTP — pobranie płatności po bookingId}]
+GET /api/v1/payments?bookingId=aa11bb22-cc33-dd44-ee55-ff6677889900
+Authorization: Bearer <JWT>
+Accept: application/json
+\end{lstlisting}
+
+\noindent\textbf{Ciało żądania JSON:} brak. Parametr \texttt{bookingId} jest przekazywany w adresie URL jako parametr zapytania.
+
+\begin{lstlisting}[style=http,caption={Odpowiedź HTTP — pobranie płatności po bookingId, sukces}]
+200 OK
+Content-Type: application/json
+\end{lstlisting}
+
+\begin{lstlisting}[style=json,caption={Ciało odpowiedzi — pobranie płatności po bookingId, sukces}]
+{
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566",
+  "bookingId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "status": "Initiated",
+  "totalValue": 9600.00,
+  "currency": "PLN"
+}
+\end{lstlisting}
+
+
+
 
 \section{Moderacja i zgłoszenia naruszeń}
 Moduł moderacji opiera się o obiekt \texttt{ViolationReport}, który reprezentuje „sprawę” w panelu administracyjnym. Zgłoszenie może dotyczyć ogłoszenia lub użytkownika.
