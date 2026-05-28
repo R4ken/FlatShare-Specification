@@ -1171,7 +1171,7 @@ Dla zapewnienia spójności, po aktualizacji preferencji kolejne wywołanie endp
     \item \texttt{petsAllowed} – zezwolenie na mieszkanie ze zwierzętami.
     \item \texttt{nonSmokingOnly} – wymaganie aby wszyscy lokatorzy byli niepalący.
     \item \texttt{closeToShops} – liczba elementów na stronie.
-    \item \texttt{profile} – jedna z wartości: "student", ... (otwarte na rozszerzenie)
+    \item \texttt{profile} – jedna z wartości: "student", "workingPerson", "tourist", "None"
     \item \texttt{minArea} – minimalna powierzchnia pokoju [$m^2$].
     \item \texttt{maxArea} – maksymalna powierzchnia pokoju [$m^2$].
     \item \texttt{startDate} - początek okresu wynajmu
@@ -1631,6 +1631,7 @@ Aby domknąć proces z diagramu przypadków użycia (akceptacja/odrzucenie, anul
     \item \texttt{POST /api/v1/bookings/\{bookingId\}/cancel} --- anulowanie rezerwacji przez Lokatora (wariant z rysunku modułu wynajmu).
     \item \texttt{POST /api/v1/bookings/\{bookingId\}/pay} --- inicjacja płatności (zwraca URL do bramki lub dane redirectu).
     \item \texttt{GET /api/v1/bookings/\{bookingId\}} --- podgląd statusu rezerwacji (używane również przez integrację płatności do weryfikacji stanu).
+    \item \texttt{GET /api/v1/bookings/\{bookingId\}/me} --- w przypadku tenanta pobranie wszystkich rezerwacji które utworzył, w przypadku landlorda pobranie wszystkich bookingów dotyczących jego ogłoszeń
 \end{itemize}
 
 
@@ -1866,9 +1867,10 @@ Content-Type: application/json
   "endDate": "2025-06-30",
   "totalPrice": 9600.00,
   "currency": "PLN",
-  "paymentStatus": "SUCCEEDED"
+  "paymentId": "77889900-aabb-ccdd-eeff-112233445566"
 }
 \end{lstlisting}
+W przypadku, gdy płatność dotycząca danego bookingu nie została jeszcze zainicjowana, pole \texttt{paymentId} powinno przyjąć wartość pustego stringa \texttt{""}.
 
 \subsection{Diagram sekwencji wynajmu pokoju}
 
@@ -1917,6 +1919,7 @@ Możliwe statusy:
   \item Succeeded
   \item Failed
   \item Cancelled
+\end{itemize}
 \subsection{Pobranie płatności po identyfikatorze płatności}
 
 Endpoint odpowiada metodzie kontrolera \texttt{GetById([FromRoute] Guid paymentId)}.
