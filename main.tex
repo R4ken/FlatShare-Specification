@@ -2027,6 +2027,24 @@ Moduł moderacji opiera się o obiekt \texttt{ViolationReport}, który reprezent
 
 \noindent Odpowiedź zawiera listę spraw wraz ze statusem (\texttt{Open/UnderReview/...}) oraz metadanymi, co umożliwia priorytetyzację.
 
+\subsection{Rozpoczęcie analizy zgłoszenia}
+\begin{itemize}
+    \item Metoda HTTP: \texttt{PATCH}
+    \item Adres URL: \texttt{/api/v1/admin/reports/\{id\}/open}
+    \item Endpoint chroniony: tak (JWT + rola ADMIN)
+\end{itemize}
+
+\noindent Endpoint służy do zmiany statusu zgłoszenia na \texttt{UnderReview}, co oznacza, że administrator rozpoczął jego analizę.
+
+\subsection{Odrzucenie zgłoszenia (zamknięcie bez akcji)}
+\begin{itemize}
+    \item Metoda HTTP: \texttt{PATCH}
+    \item Adres URL: \texttt{/api/v1/admin/reports/\{id\}/dismiss}
+    \item Endpoint chroniony: tak (JWT + rola ADMIN)
+\end{itemize}
+
+\noindent Endpoint pozwala administratorowi zamknąć bezzasadne zgłoszenie, zmieniając jego status na \texttt{ClosedNoAction}.
+
 \subsection{Blokada użytkownika}
 \begin{itemize}
     \item Metoda HTTP: \texttt{POST}
